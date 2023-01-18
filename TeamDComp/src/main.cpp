@@ -19,6 +19,8 @@
 // Controller1          controller                    
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
+bool testingAutonomous = true; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
+
 /** IMPORTANT INFORMATION
 
 Controls:
@@ -348,15 +350,20 @@ void usercontrol(void) {
 // Main will set up the competition functions and callbacks.
 //
 int main() {
-  // Set up callbacks for autonomous and driver control periods.
-  Competition.autonomous(autonomous);
-  Competition.drivercontrol(usercontrol);
+  if(testingAutonomous){
 
-  // Run the pre-autonomous function.
-  pre_auton();
+  }
+  else{
+    // Set up callbacks for autonomous and driver control periods.
+    Competition.autonomous(autonomous);
+    Competition.drivercontrol(usercontrol);
 
-  // Prevent main from exiting with an infinite loop.
-  while (true) {
-    wait(100, msec);
+    // Run the pre-autonomous function.
+    pre_auton();
+
+    // Prevent main from exiting with an infinite loop.
+    while (true) {
+      wait(100, msec);
+    }
   }
 }
