@@ -1,0 +1,2 @@
+# TeamDComp
+ Repository for competition
