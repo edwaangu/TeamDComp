@@ -49,7 +49,7 @@ int nextScreenRef = 100; // The amount of 20 msec intervals to the next refresh
 
 int lastBatteryAmt = 0; // Holds the value of the battery without needing to check the battery each time
 
-/** FUNCTIONS **/
+/** SCREEN FUNCTIONS **/
 void refreshScreen(){
   // Clear screen
   Controller1.Screen.clearScreen();
@@ -80,6 +80,87 @@ void setupScreen(){
   refreshScreen();
 }
 
+/** AUTONOMOUS FUNCTIONS **/
+void Move(int feet, int speed) { // Input in feet, speed in percent 0-100
+  //input is feet, converts to inches, gets radians with arc length, converts to degrees
+  float angle = ((feet * 12) / 2.125) * (180/3.14159);
+  
+  RightDriveMotors.setVelocity(speed, percent);
+  RightDriveMotors.spinFor(forward, angle, deg, false);
+  LeftDriveMotors.setVelocity(speed, percent);
+  LeftDriveMotors.spinFor(forward, angle, deg, true);
+}
+
+void Turn(int angle, int speed) { // Positive angle spins clockwise?
+  int angleAdjust = angle * 3.6;
+  RightDriveMotors.setVelocity(speed, percent);
+  RightDriveMotors.spinFor(forward, angleAdjust, deg, false);
+  LeftDriveMotors.setVelocity(speed, percent);
+  LeftDriveMotors.spinFor(reverse, angleAdjust, deg, true);
+
+}
+
+void AdjustRoller(float timeSpin) { // Spins roller at 50 speed for X seconds
+  RollMotor.setVelocity(50, percent);
+  RollMotor.spinFor(forward, timeSpin, seconds);
+}
+
+void AdjustFlywheel(int speed){ // Flywheel motor will spin clockwise with a positive speed
+  if(speed != 0){
+    FlywheelMotor.setVelocity(speed, percent);
+    FlywheelMotor.spin(forward);
+  }
+  else{
+    FlywheelMotor.stop();
+  }
+}
+
+void AdjustConveyor(int speed){ // Conveyor motor will spin clockwise with a positive speed
+  if(speed != 0){
+    ConveyorMotor.setVelocity(speed, percent);
+    ConveyorMotor.spin(forward);
+  }
+  else{
+    ConveyorMotor.stop();
+  }
+}
+
+void FingerActivate(int angle){ // Rotates Finger mechanism
+  FingerMotor.setStopping(hold);
+  FingerMotor.setTimeout(1, seconds);
+  FingerMotor.setVelocity(40, percent);
+  FingerMotor.spinFor(forward, angle, deg, true);
+}
+
+/** PRE AUTONOMOUS **/
+void pre_auton(void) {
+  // Initializing Robot Configuration. DO NOT REMOVE!
+  vexcodeInit();
+  setupScreen();
+
+  return;
+}
+
+/** AUTONOMOUS **/
+void StartAutonomous(){ // All autonomous actions should happen here
+  //turn(45, 20);
+  //roller(3);
+}
+
+void autonomous(void) {
+
+  Controller1.Screen.clearScreen();
+  Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("AUTO STARTED");
+
+  StartAutonomous();
+
+  Controller1.Screen.clearScreen();
+  Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("FINISHED");
+}
+
+/** USER CONTROL / RC FUNCTIONS **/
 void toggleConveyor(){
   // Update the bool controlling whether or not the conveyor is on
   conveyorOn = !conveyorOn;
@@ -97,20 +178,6 @@ void toggleConveyor(){
 
   // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
   refreshScreen();
-}
-
-/** PRE AUTONOMOUS **/
-void pre_auton(void) {
-  // Initializing Robot Configuration. DO NOT REMOVE!
-  vexcodeInit();
-  setupScreen();
-
-  return;
-}
-
-/** AUTONOMOUS **/
-void autonomous(void) {
-
 }
 
 /** USER CONTROL / RC **/
