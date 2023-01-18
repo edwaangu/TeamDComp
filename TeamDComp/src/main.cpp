@@ -43,7 +43,7 @@ competition Competition;
 
 /** VARIABLES **/
 float minimumStick = 5;  // Minimum output from controller sticks
-bool refreshScreenEveryX = true; // If true, it will refresh every "nextScreenRef" x 20 milliseconds.
+bool refreshScreenEveryX = false; // If true, it will refresh every "nextScreenRef" x 20 milliseconds.
                                   // If false, it will refresh every battery % change (Checked every "nextScreenRef")
 double turningCap = 1; // 0 to 1
 
@@ -61,7 +61,7 @@ int abs(int val){ // Convert integers to their absolute value
 bool conveyorOn = false; // Default to conveyor OFF, boolean that controls whether the conveyor is running
 bool flywheelOn = false; // Default to flywheel OFF, boolean that controls whether the flywheeel is running
 
-itt fingerMode = 0; // Finger modes:
+int fingerMode = 0; // Finger modes:
 /**
 0 - Finger is not in motion
 1 - Finger is moving to push the flywheel
@@ -101,6 +101,7 @@ void refreshScreen(){
   // Print brain battery amount
   Controller1.Screen.print("BATT: ");
   Controller1.Screen.print(lastBatteryAmt);
+  Controller1.Screen.print("%");
   
   // Set cursor to row 3, column 1
   Controller1.Screen.setCursor(3, 1);
@@ -241,11 +242,23 @@ void toggleFlywheel(){ // To toggle the flywheel
 }
 
 void updateFinger(){
-  if(fingerMode == 1){
-
+  FingerMotor.setStopping(hold);
+  FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
+  if(fingerMode == 1){ // FINGER OUT!
+    FingerMotor.setVelocity(30, percent);
+    FingerMotor.spin(forward);
+    if(FingerMotor.position(turns) >= 1){
+      FingerMotor.stop();
+      fingerMode = 2;
+    }
   }
-  else if(fingerMode == 2){
-
+  else if(fingerMode == 2){ // FINGER RETURN!
+    FingerMotor.setVelocity(30, percent);
+    FingerMotor.spin(reverse);
+    if(FingerMotor.position(turns) <= 0.1){
+      FingerMotor.stop();
+      fingerMode = 0;
+    }
   }
 }
 
@@ -309,8 +322,9 @@ void usercontrol(void) {
       fingerButtonPressed = false;
     }
 
+    updateFinger();
+
     // Screen Refresh every x msec (Not every check unless you want to REALLY lag the brain/controller)
-    /*
     screenRefCount +=1;
     if(screenRefCount >= nextScreenRef){ // Have we reached the next screen refresh?
       screenRefCount = 0; // Reset counter
@@ -323,7 +337,7 @@ void usercontrol(void) {
           lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
         }
       }
-    }*/
+    }
 
     // Wait
     wait(20, msec); // We are anti-wasters.
