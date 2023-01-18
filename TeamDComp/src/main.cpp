@@ -3,7 +3,7 @@
 /*    Module:       main.cpp                                                  */
 /*    Author:       C:\Users\Kepples                                          */
 /*    Created:      Wed Jan 18 2023                                           */
-/*    Description:  Main code for 29295D                                                */
+/*    Description:  Main code for 29295D                                      */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
 
@@ -18,6 +18,21 @@
 // FlywheelMotor        motor         8               
 // Controller1          controller                    
 // ---- END VEXCODE CONFIGURED DEVICES ----
+
+/** IMPORTANT INFORMATION
+
+Controls:
+
+Axis 3 - Forward and back
+Axis 1 - Turning left and right
+
+Button A - Toggle Conveyor
+Button X - Toggle Flywheel
+Button Y - Start Finger Sequence
+
+R1 and R2 - Roll Roller
+
+*/
 
 #include "vex.h"
 
@@ -38,16 +53,31 @@ double turnSpd = 0;
 double leftSpd = 0;
 double rightSpd = 0;
 
+// Math Function
 int abs(int val){ // Convert integers to their absolute value
   return val;
 }
 
 bool conveyorOn = false; // Default to conveyor OFF, boolean that controls whether the conveyor is running
+bool flywheelOn = false; // Default to flywheel OFF, boolean that controls whether the flywheeel is running
 
+itt fingerMode = 0; // Finger modes:
+/**
+0 - Finger is not in motion
+1 - Finger is moving to push the flywheel
+2 - Finger is moving back to it's original position
+*/
+
+// Screen related
 int screenRefCount = 0; // Counter that counts up to the nextScreenRef amount
 int nextScreenRef = 100; // The amount of 20 msec intervals to the next refresh
 
 int lastBatteryAmt = 0; // Holds the value of the battery without needing to check the battery each time
+
+// Button related
+bool conveyorButtonPressed = false;
+bool fingerButtonPressed = false;
+bool flywheelButtonPressed = false;
 
 /** SCREEN FUNCTIONS **/
 void refreshScreen(){
@@ -58,15 +88,26 @@ void refreshScreen(){
   Controller1.Screen.setCursor(1, 1);
 
   // Print whether or not the conveyor is on or off
-  Controller1.Screen.print("Conveyor:");
+  Controller1.Screen.print("CONV:");
   Controller1.Screen.print(conveyorOn ? "ON" : "OFF");
 
-  // Set cursor to row 2, column 2
+  // Print whether finger is active
+  Controller1.Screen.print("FLY:");
+  Controller1.Screen.print(flywheelOn ? "ON" : "OFF");
+
+  // Set cursor to row 2, column 1
   Controller1.Screen.setCursor(2, 1);
 
   // Print brain battery amount
-  Controller1.Screen.print("Battery: ");
+  Controller1.Screen.print("BATT: ");
   Controller1.Screen.print(lastBatteryAmt);
+  
+  // Set cursor to row 3, column 1
+  Controller1.Screen.setCursor(3, 1);
+
+  // Print whether finger is busy
+  Controller1.Screen.print("FINGER:");
+  Controller1.Screen.print(fingerMode == 0 ? "LAZY" : "BUSY");
 }
 
 void setupScreen(){
@@ -136,7 +177,7 @@ void FingerActivate(int angle){ // Rotates Finger mechanism
 void pre_auton(void) {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
-  setupScreen();
+  //setupScreen();
 
   return;
 }
@@ -161,7 +202,7 @@ void autonomous(void) {
 }
 
 /** USER CONTROL / RC FUNCTIONS **/
-void toggleConveyor(){
+void toggleConveyor(){ // To toggle the conveyor
   // Update the bool controlling whether or not the conveyor is on
   conveyorOn = !conveyorOn;
   
@@ -178,6 +219,34 @@ void toggleConveyor(){
 
   // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
   refreshScreen();
+}
+
+void toggleFlywheel(){ // To toggle the flywheel
+  // Update the bool controlling whether or not the conveyor is on
+  flywheelOn = !flywheelOn;
+  
+  // Update conveyor status in-function to prevent wasted computations
+  if(flywheelOn){
+    // Set conveyor motor to full power (Because why wouldn't you)
+    FlywheelMotor.setVelocity(100, percent);
+    FlywheelMotor.spin(reverse);
+  }
+  else{
+    // Stop conveyor motor
+    FlywheelMotor.stop();
+  }
+
+  // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
+  refreshScreen();
+}
+
+void updateFinger(){
+  if(fingerMode == 1){
+
+  }
+  else if(fingerMode == 2){
+
+  }
 }
 
 /** USER CONTROL / RC **/
@@ -200,20 +269,48 @@ void usercontrol(void) {
       RightDriveMotors.setVelocity(rightSpd, percent);
       LeftDriveMotors.spin(forward);
       RightDriveMotors.spin(forward);
-      FlywheelMotor.setVelocity(100, percent);
+      //FlywheelMotor.setVelocity(100, percent);
     }
     else{
       // Stop motors
       LeftDriveMotors.stop();
       RightDriveMotors.stop();
-      FlywheelMotor.stop();
+      //FlywheelMotor.stop();
     }
 
 
-    // Conveyor
-    Controller1.ButtonA.pressed(toggleConveyor); // Run the "toggleConveyor" function every time the A button is pressed
+    // Conveyor - Run the "toggleConveyor" function every time the A button is pressed
+    if(!conveyorButtonPressed && Controller1.ButtonA.pressing()){
+      toggleConveyor();
+      conveyorButtonPressed = true;
+    }
+    if(conveyorButtonPressed && !Controller1.ButtonA.pressing()){
+      conveyorButtonPressed = false;
+    }
+
+    // Flywheel - Run the "toggleFlywheel" function every time the A button is pressed
+    if(!flywheelButtonPressed && Controller1.ButtonX.pressing()){
+      toggleFlywheel();
+      flywheelButtonPressed = true;
+    }
+    if(flywheelButtonPressed && !Controller1.ButtonX.pressing()){
+      flywheelButtonPressed = false;
+    }
+
+    // Finger - Update "fingerMode" to 1 to start finger sequence
+    if(!fingerButtonPressed && Controller1.ButtonY.pressing()){
+      if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
+        fingerMode = 1;
+        FingerMotor.setPosition(0, degrees);
+      }
+      fingerButtonPressed = true;
+    }
+    if(fingerButtonPressed && !Controller1.ButtonY.pressing()){
+      fingerButtonPressed = false;
+    }
 
     // Screen Refresh every x msec (Not every check unless you want to REALLY lag the brain/controller)
+    /*
     screenRefCount +=1;
     if(screenRefCount >= nextScreenRef){ // Have we reached the next screen refresh?
       screenRefCount = 0; // Reset counter
@@ -226,7 +323,7 @@ void usercontrol(void) {
           lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
         }
       }
-    }
+    }*/
 
     // Wait
     wait(20, msec); // We are anti-wasters.
