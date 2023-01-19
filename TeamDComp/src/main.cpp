@@ -10,16 +10,16 @@
 // ---- START VEXCODE CONFIGURED DEVICES ----
 // Robot Configuration:
 // [Name]               [Type]        [Port(s)]
-// RollMotor            motor         1               
+// RollMotor            motor         21              
 // RightDriveMotors     motor_group   2, 3            
 // LeftDriveMotors      motor_group   4, 5            
-// FingerMotor          motor         6               
-// ConveyorMotor        motor         7               
-// FlywheelMotor        motor         8               
+// FingerMotor          motor         20              
+// ConveyorMotor        motor         1               
+// FlywheelMotor        motor         12              
 // Controller1          controller                    
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
-bool testingAutonomous = true; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
+bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
 
 /** IMPORTANT INFORMATION
 
@@ -34,6 +34,33 @@ Button Y - Start Finger Sequence
 
 R1 and R2 - Roll Roller
 
+
+Controller Messages:
+
+COOKING STARTED - Autonomous started
+COOKING FINISHED - Autonomous finished with remaining time
+
+MIX:
+  MIXING - Conveyor is mixing disks
+  MIXED - Conveyor has currently stopped mixing disk
+
+TOAST:
+  TOASTING - Flywheel is running
+  TOASTED - Flywheel is not running
+
+JUICE: Battery power
+
+FINGER: Disk pusher
+  LAZY - Disk pusher is not active
+  BUSY - Disk pusher is in the middle of pushing or returning
+
+Motor Temperature Guide:
+ 0 - 25% - BREAD
+ 25 - 50% - TOAST
+ 50 - 75% - TOASTED
+ 75 - 100% - BURNTED
+
+
 */
 
 #include "vex.h"
@@ -45,7 +72,7 @@ competition Competition;
 
 /** VARIABLES **/
 float minimumStick = 5;  // Minimum output from controller sticks
-bool refreshScreenEveryX = false; // If true, it will refresh every "nextScreenRef" x 20 milliseconds.
+bool refreshScreenEveryX = true; // If true, it will refresh every "nextScreenRef" x 20 milliseconds.
                                   // If false, it will refresh every battery % change (Checked every "nextScreenRef")
 double turningCap = 1; // 0 to 1
 
@@ -71,10 +98,19 @@ int fingerMode = 0; // Finger modes:
 */
 
 // Screen related
-int screenRefCount = 0; // Counter that counts up to the nextScreenRef amount
-int nextScreenRef = 100; // The amount of 20 msec intervals to the next refresh
+int screenRefCount = 300; // Counter that counts up to the nextScreenRef amount
+int nextScreenRef = 300; // The amount of 20 msec intervals to the next refresh
 
 int lastBatteryAmt = 0; // Holds the value of the battery without needing to check the battery each time
+int screenInformationMode = 3;
+/*
+0 - Battery (JUICE) percentage
+1 - Movement Motor (TRLR-L, TRLR-R) TEMPS
+2 - Conveyor Motor (MIX) TEMPS + Flywheel Motor (TST) TEMPS
+3 - Pusher Motor (FINGER) TEMPS + Roller Motor (ROLL) temps
+
+*/
+
 
 // Button related
 bool conveyorButtonPressed = false;
@@ -82,35 +118,57 @@ bool fingerButtonPressed = false;
 bool flywheelButtonPressed = false;
 
 /** SCREEN FUNCTIONS **/
-void refreshScreen(){
-  // Clear screen
-  Controller1.Screen.clearScreen();
-
-  // Set cursor to row 1, column 1
-  Controller1.Screen.setCursor(1, 1);
-
-  // Print whether or not the conveyor is on or off
-  Controller1.Screen.print("MIX");
-  Controller1.Screen.print(conveyorOn ? "ING | " : "UNT | ");
-
-  // Print whether finger is active
-  Controller1.Screen.print("TOAST");
-  Controller1.Screen.print(flywheelOn ? "ING" : "ED");
-
-  // Set cursor to row 2, column 1
-  Controller1.Screen.setCursor(2, 1);
-
-  // Print brain battery amount
-  Controller1.Screen.print("JUICE: ");
-  Controller1.Screen.print(lastBatteryAmt);
-  Controller1.Screen.print("%");
+void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
   
-  // Set cursor to row 3, column 1
-  Controller1.Screen.setCursor(3, 1);
+  // Clear screen
+  //Controller1.Screen.clearScreen();
 
-  // Print whether finger is busy
-  Controller1.Screen.print("FINGER:");
-  Controller1.Screen.print(fingerMode == 0 ? "LAZY" : "BUSY");
+  if(updateRow1){
+    // Set cursor to row 1, column 1
+    Controller1.Screen.clearLine(1);
+    Controller1.Screen.setCursor(1, 1);
+
+    // Print whether or not the conveyor is on or off
+    Controller1.Screen.print("MIX");
+    Controller1.Screen.print(conveyorOn ? "ING | " : "ED | ");
+
+    // Print whether finger is active
+    Controller1.Screen.print("TOAST");
+    Controller1.Screen.print(flywheelOn ? "ING" : "ED");
+  }
+
+  if(updateRow2){
+    // Set cursor to row 2, column 1
+    Controller1.Screen.clearLine(2);
+    Controller1.Screen.setCursor(2, 1);
+
+    // Print brain battery amount
+    if(screenInformationMode == 0){
+      Controller1.Screen.print("JUICE: %d", lastBatteryAmt);
+    }
+    else if(screenInformationMode == 1){
+      Controller1.Screen.print("TRLR-L: %.0f", LeftDriveMotors.temperature(percent));
+      Controller1.Screen.print(" TRLR-R: %.0f", RightDriveMotors.temperature(percent));
+    }
+    else if(screenInformationMode == 2){
+      Controller1.Screen.print("MIXER: %.0f", ConveyorMotor.temperature(percent));
+      Controller1.Screen.print(" TOAST: %.0f", FlywheelMotor.temperature(percent));
+    }
+    else if(screenInformationMode == 3){
+      Controller1.Screen.print("FINGER: %.0f", FingerMotor.temperature(percent));
+      Controller1.Screen.print(" ROLL: %.0f", RollMotor.temperature(percent));
+    }
+  }
+  
+  if(updateRow3){
+    // Set cursor to row 3, column 1
+    Controller1.Screen.clearLine(3);
+    Controller1.Screen.setCursor(3, 1);
+
+    // Print whether finger is busy
+    Controller1.Screen.print("FINGER:");
+    Controller1.Screen.print(fingerMode == 0 ? "LAZY" : "BUSY");
+  }
 }
 
 void setupScreen(){
@@ -121,7 +179,7 @@ void setupScreen(){
   lastBatteryAmt = Brain.Battery.capacity();
 
   // Refresh screen
-  refreshScreen();
+  refreshScreen(true, true, true);
 }
 
 /** AUTONOMOUS FUNCTIONS **/
@@ -223,7 +281,7 @@ void toggleConveyor(){ // To toggle the conveyor
   }
 
   // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
-  refreshScreen();
+  refreshScreen(true, false, false);
 }
 
 void toggleFlywheel(){ // To toggle the flywheel
@@ -242,7 +300,7 @@ void toggleFlywheel(){ // To toggle the flywheel
   }
 
   // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
-  refreshScreen();
+  refreshScreen(true, false, false);
 }
 
 void updateFinger(){
@@ -262,6 +320,7 @@ void updateFinger(){
     if(FingerMotor.position(turns) <= 0.1){
       FingerMotor.stop();
       fingerMode = 0;
+      refreshScreen(false, false, true);
     }
   }
 }
@@ -270,13 +329,14 @@ void updateFinger(){
 
 void usercontrol(void) {
   // User control code here, inside the loop
+  setupScreen();
   while (1) {
     // Left/Right Motors
     if(abs(Controller1.Axis3.position(percent)) + abs(Controller1.Axis1.position(percent)) >= minimumStick){
       // Only move if controller sticks are more than the deadband (In case of controller drift)
       // Use dual stick mode, easier to go straight or control turns if necessary
       fwdBackSpd = Controller1.Axis3.position(percent);
-      turnSpd = Controller1.Axis1.position(percent);
+      turnSpd = -Controller1.Axis1.position(percent);
 
       leftSpd = fwdBackSpd - turnSpd;
       rightSpd = fwdBackSpd + turnSpd;
@@ -318,6 +378,7 @@ void usercontrol(void) {
     if(!fingerButtonPressed && Controller1.ButtonY.pressing()){
       if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
         fingerMode = 1;
+        refreshScreen(false, false, true);
         FingerMotor.setPosition(0, degrees);
       }
       fingerButtonPressed = true;
@@ -332,12 +393,17 @@ void usercontrol(void) {
     screenRefCount +=1;
     if(screenRefCount >= nextScreenRef){ // Have we reached the next screen refresh?
       screenRefCount = 0; // Reset counter
+      screenInformationMode ++;
+      if(screenInformationMode > 3){
+        screenInformationMode = 0;
+      }
       if(refreshScreenEveryX){ // If the mode is to refresh every x amount of times
-        refreshScreen(); // Run refresh screen function
+        refreshScreen(false, true, false); // Run refresh screen function
+        lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
       }
       else{ // If the mode is to refresh if the battery percentage changes
         if(lastBatteryAmt != Brain.Battery.capacity()){ // Check if battery % changed from last refresh
-          refreshScreen(); // Refresh screen
+          refreshScreen(false, true, false); // Refresh screen
           lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
         }
       }
