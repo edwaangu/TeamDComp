@@ -90,18 +90,18 @@ void refreshScreen(){
   Controller1.Screen.setCursor(1, 1);
 
   // Print whether or not the conveyor is on or off
-  Controller1.Screen.print("CONV:");
-  Controller1.Screen.print(conveyorOn ? "ON" : "OFF");
+  Controller1.Screen.print("MIX");
+  Controller1.Screen.print(conveyorOn ? "ING | " : "UNT | ");
 
   // Print whether finger is active
-  Controller1.Screen.print("FLY:");
-  Controller1.Screen.print(flywheelOn ? "ON" : "OFF");
+  Controller1.Screen.print("TOAST");
+  Controller1.Screen.print(flywheelOn ? "ING" : "ED");
 
   // Set cursor to row 2, column 1
   Controller1.Screen.setCursor(2, 1);
 
   // Print brain battery amount
-  Controller1.Screen.print("BATT: ");
+  Controller1.Screen.print("JUICE: ");
   Controller1.Screen.print(lastBatteryAmt);
   Controller1.Screen.print("%");
   
@@ -195,12 +195,14 @@ void autonomous(void) {
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
-  Controller1.Screen.print("AUTO STARTED");
+  Controller1.Screen.print("COOKING STARTED");
 
   StartAutonomous();
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("COOKING");
+  Controller1.Screen.setCursor(2, 1);
   Controller1.Screen.print("FINISHED");
 }
 
@@ -351,7 +353,7 @@ void usercontrol(void) {
 //
 int main() {
   if(testingAutonomous){
-
+    autonomous();
   }
   else{
     // Set up callbacks for autonomous and driver control periods.
