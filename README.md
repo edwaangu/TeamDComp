@@ -18,11 +18,11 @@ R1 and R2 - Roll Roller
 COOKING STARTED - Autonomous started
 COOKING FINISHED - Autonomous finished with remaining time
 
-MIX:
+MIXER:
   MIXING - Conveyor is mixing disks
   MIXED - Conveyor has currently stopped mixing disk
 
-TOAST:
+TOASTER:
   TOASTING - Flywheel is running
   TOASTED - Flywheel is not running
 
@@ -36,4 +36,4 @@ Motor Temperature Guide:
  0 - 25% - BREAD
  25 - 50% - TOAST
  50 - 75% - TOASTED
- 75 - 100% - BURNTED
+ 75 - 100% - BURNT
