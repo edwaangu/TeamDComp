@@ -10,7 +10,7 @@
 // ---- START VEXCODE CONFIGURED DEVICES ----
 // Robot Configuration:
 // [Name]               [Type]        [Port(s)]
-// RollMotor            motor         21              
+// RollMotor            motor         6               
 // RightDriveMotors     motor_group   2, 3            
 // LeftDriveMotors      motor_group   4, 5            
 // FingerMotor          motor         20              
@@ -98,7 +98,7 @@ int fingerMode = 0; // Finger modes:
 
 // Screen related
 int screenRefCount = 300; // Counter that counts up to the nextScreenRef amount
-int nextScreenRef = 300; // The amount of 20 msec intervals to the next refresh
+int nextScreenRef = 200; // The amount of 20 msec intervals to the next refresh
 
 int lastBatteryAmt = 0; // Holds the value of the battery without needing to check the battery each time
 int screenInformationMode = 3;
@@ -392,9 +392,10 @@ void updateFlywheelSpeed(int speedUpdate){
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
-  Controller1.Screen.print("TOAST SPEED: ", flywheelAdjustedSpeed);
+  Controller1.Screen.print("TOAST SPEED: %d", flywheelAdjustedSpeed);
 
   screenRefCount = 0;
+  nextScreenRef = 100;
 
 }
 
@@ -484,18 +485,26 @@ void usercontrol(void) {
     screenRefCount +=1;
     if(screenRefCount >= nextScreenRef){ // Have we reached the next screen refresh?
       screenRefCount = 0; // Reset counter
-      screenInformationMode ++;
-      if(screenInformationMode > 3){
-        screenInformationMode = 0;
-      }
-      if(refreshScreenEveryX){ // If the mode is to refresh every x amount of times
-        refreshScreen(false, true, false); // Run refresh screen function
+      
+      if(nextScreenRef == 100){
+        nextScreenRef = 200;
+        refreshScreen(true, true, true); // Run refresh screen function
         lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
       }
-      else{ // If the mode is to refresh if the battery percentage changes
-        if(lastBatteryAmt != Brain.Battery.capacity()){ // Check if battery % changed from last refresh
-          refreshScreen(false, true, false); // Refresh screen
+      else{
+        screenInformationMode ++;
+        if(screenInformationMode > 3){
+          screenInformationMode = 0;
+        }
+        if(refreshScreenEveryX){ // If the mode is to refresh every x amount of times
+          refreshScreen(false, true, false); // Run refresh screen function
           lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
+        }
+        else{ // If the mode is to refresh if the battery percentage changes
+          if(lastBatteryAmt != Brain.Battery.capacity()){ // Check if battery % changed from last refresh
+            refreshScreen(false, true, false); // Refresh screen
+            lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
+          }
         }
       }
     }

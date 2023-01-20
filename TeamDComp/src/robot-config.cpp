@@ -8,7 +8,7 @@ using code = vision::code;
 brain  Brain;
 
 // VEXcode device constructors
-motor RollMotor = motor(PORT21, ratio18_1, true);
+motor RollMotor = motor(PORT6, ratio18_1, true);
 motor RightDriveMotorsMotorA = motor(PORT2, ratio18_1, true);
 motor RightDriveMotorsMotorB = motor(PORT3, ratio18_1, true);
 motor_group RightDriveMotors = motor_group(RightDriveMotorsMotorA, RightDriveMotorsMotorB);
