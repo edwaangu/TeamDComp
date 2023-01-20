@@ -17,7 +17,7 @@ motor LeftDriveMotorsMotorB = motor(PORT5, ratio18_1, false);
 motor_group LeftDriveMotors = motor_group(LeftDriveMotorsMotorA, LeftDriveMotorsMotorB);
 motor FingerMotor = motor(PORT20, ratio18_1, false);
 motor ConveyorMotor = motor(PORT1, ratio18_1, false);
-motor FlywheelMotor = motor(PORT12, ratio18_1, true);
+motor FlywheelMotor = motor(PORT12, ratio18_1, false);
 controller Controller1 = controller(primary);
 
 // VEXcode generated functions

@@ -20,6 +20,7 @@
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
+int autonomousMode = 1; // 1: THREE SQUARE, 2: TWO SQUARE
 
 /** IMPORTANT INFORMATION
 
@@ -206,15 +207,23 @@ void Turn(int angle, int speed) { // Positive angle spins clockwise?
 
 }
 
-void AdjustRoller(float timeSpin) { // Spins roller at 50 speed for X seconds
-  RollMotor.setVelocity(50, percent);
-  RollMotor.spinFor(forward, timeSpin, seconds);
+void AdjustRoller(float angleAmount) { // Spins roller at 50 speed for X seconds
+
+  RightDriveMotors.setVelocity(10, percent);
+  RightDriveMotors.spin(reverse);
+  LeftDriveMotors.setVelocity(10, percent);
+  RightDriveMotors.spin(reverse);
+  wait(0.3, seconds);
+  RollMotor.setVelocity(100, percent);
+  RollMotor.spinFor(forward, angleAmount, degrees, true);
+  RightDriveMotors.stop();
+  LeftDriveMotors.stop();
 }
 
 void AdjustFlywheel(int speed){ // Flywheel motor will spin clockwise with a positive speed
   if(speed != 0){
     FlywheelMotor.setVelocity(speed, percent);
-    FlywheelMotor.spin(reverse);
+    FlywheelMotor.spin(forward);
   }
   else{
     FlywheelMotor.stop();
@@ -235,6 +244,7 @@ void FingerActivate(){ // FINGER ACTIVATE
   
   FingerMotor.setStopping(hold);
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
+  //FingerMotor.setPosition(0, turns);
 
   while(FingerMotor.position(turns) < 1) {
     FingerMotor.setVelocity(30, percent);
@@ -255,6 +265,7 @@ void FingerActivate(){ // FINGER ACTIVATE
 void pre_auton(void) {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
+  FingerMotor.setPosition(0, turns); 
   //setupScreen();
 
   return;
@@ -263,7 +274,7 @@ void pre_auton(void) {
 /** AUTONOMOUS **/
 void StartAutonomous(int mode){ // All autonomous actions should happen here
   if(mode == 1){ // If starting on THREE-SQUARE (one with roller start)
-    AdjustRoller(1); // Roll roller
+    AdjustRoller(360);
     Move(0.5, 40); // Move away from roller
     Turn(45, 40); // Turn towards middle of arenaish
     AdjustConveyor(100); // Start up conveyor
@@ -277,7 +288,7 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     FingerActivate();
     FingerActivate();
     FingerActivate();
-    AdjustFlywheel(0); // Stop flywheel
+    AdjustFlywheel(0); // Stop flywheel*/
   }
   else if(mode == 2){ // IF starting on TWO-SQUARE (one with non roller start, must drive to it first)
     Move(0.5, 40); // Move off wall
@@ -285,7 +296,7 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     Move(2, 40); // Move towards roller
     Turn(-90, 40); // Turn back towards roller
     Move(-0.5, 40); // Move back towards roller
-    AdjustRoller(1); // Roll roller
+    AdjustRoller(360); // Roll roller
     Move(0.5, 40); // Move away from roller
     AdjustConveyor(100); // Start up conveyor
     AdjustFlywheel(80); // Start up flywheel
@@ -309,7 +320,7 @@ void autonomous(void) {
   Controller1.Screen.setCursor(1, 1);
   Controller1.Screen.print("COOKING STARTED");
 
-  StartAutonomous(1);
+  StartAutonomous(autonomousMode);
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
@@ -346,7 +357,7 @@ void toggleFlywheel(int thespeed){ // To toggle the flywheel
   if(flywheelOn){
     // Set conveyor motor to full power (Because why wouldn't you)
     FlywheelMotor.setVelocity(thespeed, percent);
-    FlywheelMotor.spin(reverse);
+    FlywheelMotor.spin(forward);
   }
   else{
     // Stop conveyor motor
@@ -361,17 +372,17 @@ void updateFinger(){
   FingerMotor.setStopping(hold);
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
   if(fingerMode == 1){ // FINGER OUT!
-    FingerMotor.setVelocity(30, percent);
+    FingerMotor.setVelocity(99, percent);
     FingerMotor.spin(forward);
-    if(FingerMotor.position(turns) >= 1){
+    if(FingerMotor.position(turns) >= 1.4){
       FingerMotor.stop();
       fingerMode = 2;
     }
   }
   else if(fingerMode == 2){ // FINGER RETURN!
-    FingerMotor.setVelocity(30, percent);
+    FingerMotor.setVelocity(99, percent);
     FingerMotor.spin(reverse);
-    if(FingerMotor.position(turns) <= 0.1){
+    if(FingerMotor.position(turns) <= 0.2){
       FingerMotor.stop();
       fingerMode = 0;
       refreshScreen(false, false, true);
@@ -387,8 +398,15 @@ void updateFlywheelSpeed(int speedUpdate){
   if(flywheelAdjustedSpeed < 5){
     flywheelAdjustedSpeed = 5;
   }
-
-  FlywheelMotor.setVelocity(flywheelAdjustedSpeed, percent);
+  if(flywheelOn){
+    // Set conveyor motor to full power (Because why wouldn't you)
+    FlywheelMotor.setVelocity(flywheelAdjustedSpeed, percent);
+    FlywheelMotor.spin(forward);
+  }
+  else{
+    // Stop conveyor motor
+    FlywheelMotor.stop();
+  }
 
   Controller1.Screen.clearScreen();
   Controller1.Screen.setCursor(1, 1);
@@ -441,7 +459,7 @@ void usercontrol(void) {
 
     // Flywheel - Run the "toggleFlywheel" function every time the A button is pressed
     if(!flywheelButtonPressed && Controller1.ButtonX.pressing()){
-      toggleFlywheel(100);
+      toggleFlywheel(flywheelAdjustedSpeed);
       flywheelButtonPressed = true;
     }
     if(flywheelButtonPressed && !Controller1.ButtonX.pressing()){
@@ -471,7 +489,7 @@ void usercontrol(void) {
       if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
         fingerMode = 1;
         refreshScreen(false, false, true);
-        FingerMotor.setPosition(0, degrees);
+        //FingerMotor.setPosition(0, degrees);
       }
       fingerButtonPressed = true;
     }
@@ -519,7 +537,15 @@ void usercontrol(void) {
 //
 int main() {
   if(testingAutonomous){
+    // Run the pre-autonomous function.
+    pre_auton();
+
     autonomous();
+    
+    // Prevent main from exiting with an infinite loop.
+    while (true) {
+      wait(100, msec);
+    }
   }
   else{
     // Set up callbacks for autonomous and driver control periods.
