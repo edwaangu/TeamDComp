@@ -32,6 +32,9 @@ Button A - Toggle Conveyor
 Button X - Toggle Flywheel
 Button Y - Start Finger Sequence
 
+Button UP - Increase Flywheel Speed by 5
+Button Down - Decrease Flywheel Speed by 5
+
 R1 and R2 - Roll Roller
 
 
@@ -54,11 +57,7 @@ FINGER: Disk pusher
   LAZY - Disk pusher is not active
   BUSY - Disk pusher is in the middle of pushing or returning
 
-Motor Temperature Guide:
- 0 - 25% - BREAD
- 25 - 50% - TOAST
- 50 - 75% - TOASTED
- 75 - 100% - BURNTED
+TOASTER SPEED: Speed that flywheel is turning at (when on)
 
 
 */
@@ -116,6 +115,11 @@ int screenInformationMode = 3;
 bool conveyorButtonPressed = false;
 bool fingerButtonPressed = false;
 bool flywheelButtonPressed = false;
+
+bool flywheelAdjustUpPressed = false;
+bool flywheelAdjustDownPressed = false;
+
+int flywheelAdjustedSpeed = 90;
 
 /** SCREEN FUNCTIONS **/
 void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
@@ -264,18 +268,15 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     Turn(45, 40); // Turn towards middle of arenaish
     AdjustConveyor(100); // Start up conveyor
     AdjustFlywheel(80); // Start up flywheel
-    Move(5.65, 40); // Move towards middle of arena
+    Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
+    AdjustConveyor(0); // Stop conveyor
+    Move(2.65, 40); // Move and collect things without passing auto line
     Turn(-90, 40); // Turn towards opponents's goal
 
-    AdjustConveyor(0); // Stop conveyor
     FingerMotor.setPosition(0, turns); // Setup finger
     FingerActivate();
     FingerActivate();
-    AdjustConveyor(100); // Start up conveyor (To push remaining discs onto our flywheel plane)
-    wait(2, seconds);
     FingerActivate();
-    FingerActivate();
-    AdjustConveyor(0); // Stop conveyor
     AdjustFlywheel(0); // Stop flywheel
   }
   else if(mode == 2){ // IF starting on TWO-SQUARE (one with non roller start, must drive to it first)
@@ -289,19 +290,15 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     AdjustConveyor(100); // Start up conveyor
     AdjustFlywheel(80); // Start up flywheel
     Turn(-45, 40); // Rotate towards middle of arenaish
-    Move(5.65, 40); // Move and collect things without passing auto line
+    Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
+    AdjustConveyor(0); // Stop conveyor
+    Move(2.65, 40); // Move and collect things without passing auto line
     Turn(90, 40); // Turn towards opponent's goal
 
-    AdjustConveyor(0); // Stop conveyor
     FingerMotor.setPosition(0, turns); // Setup finger
     FingerActivate(); // Launch discs
     FingerActivate();
     FingerActivate();
-    AdjustConveyor(100); // Start up conveyor (To push remaining discs onto our flywheel plane)
-    wait(2, seconds); // Give mr conveyor some time
-    FingerActivate(); // Launch remaining discs
-    FingerActivate();
-    AdjustConveyor(0); // Start up conveyor
     AdjustFlywheel(0); // Stop flywheel
   }
 }
@@ -382,6 +379,25 @@ void updateFinger(){
   }
 }
 
+void updateFlywheelSpeed(int speedUpdate){
+  flywheelAdjustedSpeed +=speedUpdate;
+  if(flywheelAdjustedSpeed > 100){
+    flywheelAdjustedSpeed = 100;
+  }
+  if(flywheelAdjustedSpeed < 5){
+    flywheelAdjustedSpeed = 5;
+  }
+
+  FlywheelMotor.setVelocity(flywheelAdjustedSpeed, percent);
+
+  Controller1.Screen.clearScreen();
+  Controller1.Screen.setCursor(1, 1);
+  Controller1.Screen.print("TOAST SPEED: ", flywheelAdjustedSpeed);
+
+  screenRefCount = 0;
+
+}
+
 /** USER CONTROL / RC **/
 
 void usercontrol(void) {
@@ -429,6 +445,24 @@ void usercontrol(void) {
     }
     if(flywheelButtonPressed && !Controller1.ButtonX.pressing()){
       flywheelButtonPressed = false;
+    }
+    
+    // Flywheel - increase speed when the UP button is pressed
+    if(!flywheelAdjustUpPressed && Controller1.ButtonUp.pressing()){
+      updateFlywheelSpeed(5);
+      flywheelAdjustUpPressed = true;
+    }
+    if(flywheelAdjustUpPressed && !Controller1.ButtonUp.pressing()){
+      flywheelAdjustUpPressed = false;
+    }
+    
+    // Flywheel - decrease speed when the DOWN button is pressed
+    if(!flywheelAdjustDownPressed && Controller1.ButtonDown.pressing()){
+      updateFlywheelSpeed(-5);
+      flywheelAdjustDownPressed = true;
+    }
+    if(flywheelAdjustDownPressed && !Controller1.ButtonDown.pressing()){
+      flywheelAdjustDownPressed = false;
     }
 
     // Finger - Update "fingerMode" to 1 to start finger sequence
