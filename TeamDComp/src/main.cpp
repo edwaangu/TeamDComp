@@ -382,7 +382,7 @@ void updateFinger(){
   else if(fingerMode == 2){ // FINGER RETURN!
     FingerMotor.setVelocity(99, percent);
     FingerMotor.spin(reverse);
-    if(FingerMotor.position(turns) <= 0.2){
+    if(FingerMotor.position(turns) <= 0){
       FingerMotor.stop();
       fingerMode = 0;
       refreshScreen(false, false, true);
