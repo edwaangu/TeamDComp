@@ -17,10 +17,12 @@
 // ConveyorMotor        motor         1               
 // FlywheelMotor        motor         12              
 // Controller1          controller                    
+// Pneumatic            digital_out   A               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
-int autonomousMode = 1; // 1: THREE SQUARE, 2: TWO SQUARE
+int autonomousMode = 5; // 1: THREE SQUARE, 2: TWO SQUARE
+bool twoStickMode = true;
 
 /** IMPORTANT INFORMATION
 
@@ -120,7 +122,7 @@ bool flywheelButtonPressed = false;
 bool flywheelAdjustUpPressed = false;
 bool flywheelAdjustDownPressed = false;
 
-int flywheelAdjustedSpeed = 90;
+int flywheelAdjustedSpeed = 60;
 
 /** SCREEN FUNCTIONS **/
 void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
@@ -199,7 +201,7 @@ void Move(double feet, int speed) { // Input in feet, speed in percent 0-100
 }
 
 void Turn(int angle, int speed) { // Positive angle spins clockwise?
-  int angleAdjust = angle * 3.6;
+  int angleAdjust = -angle * 3.6;
   RightDriveMotors.setVelocity(speed, percent);
   RightDriveMotors.spinFor(forward, angleAdjust, deg, false);
   LeftDriveMotors.setVelocity(speed, percent);
@@ -215,7 +217,7 @@ void AdjustRoller(float angleAmount) { // Spins roller at 50 speed for X seconds
   RightDriveMotors.spin(reverse);
   wait(0.3, seconds);
   RollMotor.setVelocity(100, percent);
-  RollMotor.spinFor(forward, angleAmount, degrees, true);
+  RollMotor.spinFor(reverse, angleAmount, degrees, true);
   RightDriveMotors.stop();
   LeftDriveMotors.stop();
 }
@@ -246,14 +248,14 @@ void FingerActivate(){ // FINGER ACTIVATE
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
   //FingerMotor.setPosition(0, turns);
 
-  while(FingerMotor.position(turns) < 1) {
-    FingerMotor.setVelocity(30, percent);
+  while(FingerMotor.position(turns) < 1.5) {
+    FingerMotor.setVelocity(100, percent);
     FingerMotor.spin(forward);
     wait(20, msec);
   }
   FingerMotor.stop();
-  while(FingerMotor.position(turns) <= 0.1){
-    FingerMotor.setVelocity(30, percent);
+  while(FingerMotor.position(turns) >= 0){
+    FingerMotor.setVelocity(100, percent);
     FingerMotor.spin(reverse);
     wait(20, msec);
   }
@@ -274,11 +276,12 @@ void pre_auton(void) {
 /** AUTONOMOUS **/
 void StartAutonomous(int mode){ // All autonomous actions should happen here
   if(mode == 1){ // If starting on THREE-SQUARE (one with roller start)
+    Move(-0.1, 40); 
     AdjustRoller(360);
-    Move(0.5, 40); // Move away from roller
+    AdjustFlywheel(80); // Start up flywheel
+    Move(0.25, 40); // Move away from roller
     Turn(45, 40); // Turn towards middle of arenaish
     AdjustConveyor(100); // Start up conveyor
-    AdjustFlywheel(80); // Start up flywheel
     Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
     AdjustConveyor(0); // Stop conveyor
     Move(2.65, 40); // Move and collect things without passing auto line
@@ -291,15 +294,16 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     AdjustFlywheel(0); // Stop flywheel*/
   }
   else if(mode == 2){ // IF starting on TWO-SQUARE (one with non roller start, must drive to it first)
-    Move(0.5, 40); // Move off wall
+    Move(-0.1, 40); 
+    Move(0.25, 40); // Move off wall
     Turn(90, 40); // Turn towards roller
     Move(2, 40); // Move towards roller
     Turn(-90, 40); // Turn back towards roller
     Move(-0.5, 40); // Move back towards roller
     AdjustRoller(360); // Roll roller
+    AdjustFlywheel(80); // Start up flywheel
     Move(0.5, 40); // Move away from roller
     AdjustConveyor(100); // Start up conveyor
-    AdjustFlywheel(80); // Start up flywheel
     Turn(-45, 40); // Rotate towards middle of arenaish
     Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
     AdjustConveyor(0); // Stop conveyor
@@ -311,6 +315,91 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     FingerActivate();
     FingerActivate();
     AdjustFlywheel(0); // Stop flywheel
+  }
+  if(mode == 3){ // Roller only
+  //if (starts at ez roller) [reposition to in front of roller]
+  //go backwards, trigger roller
+  //drive forward ~1.5 feet
+  //shoot two disks
+  //turn to nearby disks and pickup 3 
+  //**If time** turn and shoot all 3
+    Move(-0.1, 40); 
+    AdjustRoller(90);
+    AdjustFlywheel(69);
+    wait(4, seconds);
+    FingerActivate();
+    wait(1, seconds);
+    FingerActivate();
+    AdjustFlywheel(0);
+  }
+  if(mode == 4){ // Complex 5 disk thing starting from 2 square section
+    AdjustFlywheel(71);
+
+    // Two square start
+    Move(0.75, 40);
+    Turn(90, 40);
+    Move(2.1, 40);
+    Turn(-85, 40);
+
+    wait(1, seconds);
+
+    FingerActivate();
+    FingerActivate();
+
+    // Roll roller
+    Move(-0.45, 40);
+    AdjustRoller(90);
+
+    // Move towards other discs and pick them up
+    Move(0.15, 40);
+    Turn(90, 40);
+    Move(-0.25, 40);
+    Turn(45, 40);
+    AdjustConveyor(100);
+    Move(-5.65, 50);
+
+/*
+    // Turn towards goal and shoot again
+    AdjustFlywheel(60);
+    Turn(-90, 40);
+    FingerActivate();
+    FingerActivate();
+    FingerActivate();
+*/
+
+    AdjustFlywheel(0);
+    AdjustConveyor(0);
+
+  }
+  
+  if(mode == 5){ // Complex 5 disk thing starting from 2 square section
+    AdjustFlywheel(75);
+
+    // Two square start
+    Move(0.75, 40);
+    Turn(-90, 40);
+    Move(2.1, 40);
+    Turn(78, 40);
+
+    wait(1, seconds);
+
+    FingerActivate();
+    FingerActivate();
+
+    // Roll roller
+    Move(-0.5, 40);
+    AdjustRoller(90);
+
+    // Move towards other discs and pick them up
+    Move(0.15, 40);
+    Turn(-90, 40);
+    Move(-0.25, 40);
+    Turn(-45, 40);
+    AdjustConveyor(100);
+    Move(-5.65, 50);
+    AdjustFlywheel(0);
+    AdjustConveyor(0);
+
   }
 }
 
@@ -423,12 +512,13 @@ void usercontrol(void) {
   // User control code here, inside the loop
   setupScreen();
   while (1) {
+    int turnAxis = twoStickMode ? Controller1.Axis1.position(percent) : Controller1.Axis4.position(percent);
     // Left/Right Motors
-    if(abs(Controller1.Axis3.position(percent)) + abs(Controller1.Axis1.position(percent)) >= minimumStick){
+    if(abs(Controller1.Axis3.position(percent)) + abs(turnAxis) >= minimumStick){
       // Only move if controller sticks are more than the deadband (In case of controller drift)
       // Use dual stick mode, easier to go straight or control turns if necessary
       fwdBackSpd = Controller1.Axis3.position(percent);
-      turnSpd = -Controller1.Axis1.position(percent);
+      turnSpd = -turnAxis;
 
       leftSpd = fwdBackSpd - turnSpd;
       rightSpd = fwdBackSpd + turnSpd;
@@ -484,6 +574,19 @@ void usercontrol(void) {
       flywheelAdjustDownPressed = false;
     }
 
+    // Roller - roll based on L1 and R1
+    if(Controller1.ButtonL1.pressing()){
+      RollMotor.setVelocity(100, percent);
+      RollMotor.spin(reverse);
+    }
+    else if(Controller1.ButtonR1.pressing()){
+      RollMotor.setVelocity(100, percent);
+      RollMotor.spin(forward);
+    }
+    else{
+      RollMotor.stop();
+    }
+
     // Finger - Update "fingerMode" to 1 to start finger sequence
     if(!fingerButtonPressed && Controller1.ButtonY.pressing()){
       if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
@@ -498,6 +601,11 @@ void usercontrol(void) {
     }
 
     updateFinger();
+
+    // Expansion
+    if(Controller1.ButtonB.pressing()) {
+      Pneumatic.set(true);
+    }
 
     // Screen Refresh every x msec (Not every check unless you want to REALLY lag the brain/controller)
     screenRefCount +=1;
@@ -536,28 +644,15 @@ void usercontrol(void) {
 // Main will set up the competition functions and callbacks.
 //
 int main() {
-  if(testingAutonomous){
-    // Run the pre-autonomous function.
-    pre_auton();
+  // Set up callbacks for autonomous and driver control periods.
+  Competition.autonomous(autonomous);
+  Competition.drivercontrol(usercontrol);
 
-    autonomous();
-    
-    // Prevent main from exiting with an infinite loop.
-    while (true) {
-      wait(100, msec);
-    }
-  }
-  else{
-    // Set up callbacks for autonomous and driver control periods.
-    Competition.autonomous(autonomous);
-    Competition.drivercontrol(usercontrol);
+  // Run the pre-autonomous function.
+  pre_auton();
 
-    // Run the pre-autonomous function.
-    pre_auton();
-
-    // Prevent main from exiting with an infinite loop.
-    while (true) {
-      wait(100, msec);
-    }
+  // Prevent main from exiting with an infinite loop.
+  while (true) {
+    wait(100, msec);
   }
 }

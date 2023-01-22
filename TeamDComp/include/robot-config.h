@@ -10,6 +10,7 @@ extern motor FingerMotor;
 extern motor ConveyorMotor;
 extern motor FlywheelMotor;
 extern controller Controller1;
+extern digital_out Pneumatic;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.

@@ -19,6 +19,7 @@ motor FingerMotor = motor(PORT20, ratio18_1, false);
 motor ConveyorMotor = motor(PORT1, ratio18_1, false);
 motor FlywheelMotor = motor(PORT12, ratio18_1, false);
 controller Controller1 = controller(primary);
+digital_out Pneumatic = digital_out(Brain.ThreeWirePort.A);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
