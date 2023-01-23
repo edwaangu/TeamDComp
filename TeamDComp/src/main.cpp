@@ -23,6 +23,7 @@
 bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
 int autonomousMode = 5; // 1: THREE SQUARE, 2: TWO SQUARE
 bool twoStickMode = true;
+double maxSpeed = 0.9;
 
 /** IMPORTANT INFORMATION
 
@@ -518,10 +519,13 @@ void usercontrol(void) {
       // Only move if controller sticks are more than the deadband (In case of controller drift)
       // Use dual stick mode, easier to go straight or control turns if necessary
       fwdBackSpd = Controller1.Axis3.position(percent);
-      turnSpd = -turnAxis;
+      turnSpd = -turnAxis * 0.85;
 
       leftSpd = fwdBackSpd - turnSpd;
       rightSpd = fwdBackSpd + turnSpd;
+
+      leftSpd *= maxSpeed;
+      rightSpd *= maxSpeed;
       
       // Set velocities of motors
       LeftDriveMotors.setVelocity(leftSpd, percent);
