@@ -32,12 +32,15 @@ Controls:
 Axis 3 - Forward and back
 Axis 1 - Turning left and right
 
-Button A - Toggle Conveyor
+Button A - Toggle Intake
 Button X - Toggle Flywheel
 Button Y - Start Finger Sequence
 
 Button UP - Increase Flywheel Speed by 5
-Button Down - Decrease Flywheel Speed by 5
+Button DOWN - Decrease Flywheel Speed by 5
+
+Button LEFT - Reverse Intake
+Button RIGHT - Un-reverse Intake
 
 R1 and R2 - Roll Roller
 
@@ -48,8 +51,9 @@ COOKING STARTED - Autonomous started
 COOKING FINISHED - Autonomous finished with remaining time
 
 MIX:
-  MIXING - Conveyor is mixing disks
-  MIXED - Conveyor has currently stopped mixing disk
+  R- at beginning - Intake is reversed
+  MIXING - Intake is mixing disks
+  MIXED - Intake has currently stopped mixing disk
 
 TOAST:
   TOASTING - Flywheel is running
@@ -92,6 +96,7 @@ int abs(int val){ // Convert integers to their absolute value
 
 bool conveyorOn = false; // Default to conveyor OFF, boolean that controls whether the conveyor is running
 bool flywheelOn = false; // Default to flywheel OFF, boolean that controls whether the flywheeel is running
+bool conveyorReversed = false;
 
 int fingerMode = 0; // Finger modes:
 /**
@@ -123,6 +128,9 @@ bool flywheelButtonPressed = false;
 bool flywheelAdjustUpPressed = false;
 bool flywheelAdjustDownPressed = false;
 
+bool conveyorUnReverseButtonPressed = false;
+bool conveyorReverseButtonPressed = false;
+
 int flywheelAdjustedSpeed = 60;
 
 /** SCREEN FUNCTIONS **/
@@ -137,6 +145,9 @@ void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
     Controller1.Screen.setCursor(1, 1);
 
     // Print whether or not the conveyor is on or off
+    if(conveyorReversed){
+      Controller1.Screen.print("R-");
+    }
     Controller1.Screen.print("MIX");
     Controller1.Screen.print(conveyorOn ? "ING | " : "ED | ");
 
@@ -211,7 +222,6 @@ void Turn(int angle, int speed) { // Positive angle spins clockwise?
 }
 
 void AdjustRoller(float angleAmount) { // Spins roller at 50 speed for X seconds
-
   RightDriveMotors.setVelocity(10, percent);
   RightDriveMotors.spin(reverse);
   LeftDriveMotors.setVelocity(10, percent);
@@ -276,64 +286,31 @@ void pre_auton(void) {
 
 /** AUTONOMOUS **/
 void StartAutonomous(int mode){ // All autonomous actions should happen here
-  if(mode == 1){ // If starting on THREE-SQUARE (one with roller start)
-    Move(-0.1, 40); 
-    AdjustRoller(360);
-    AdjustFlywheel(80); // Start up flywheel
-    Move(0.25, 40); // Move away from roller
-    Turn(45, 40); // Turn towards middle of arenaish
-    AdjustConveyor(100); // Start up conveyor
-    Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
-    AdjustConveyor(0); // Stop conveyor
-    Move(2.65, 40); // Move and collect things without passing auto line
-    Turn(-90, 40); // Turn towards opponents's goal
+  LeftDriveMotors.setTimeout(2, seconds);
+  RightDriveMotors.setTimeout(2, seconds);
+  if(mode == 1){ // Two-Square Start Plan (TWO DISKS SHOT)
+    AdjustFlywheel(71);
 
-    FingerMotor.setPosition(0, turns); // Setup finger
-    FingerActivate();
-    FingerActivate();
-    FingerActivate();
-    AdjustFlywheel(0); // Stop flywheel*/
-  }
-  else if(mode == 2){ // IF starting on TWO-SQUARE (one with non roller start, must drive to it first)
-    Move(-0.1, 40); 
-    Move(0.25, 40); // Move off wall
-    Turn(90, 40); // Turn towards roller
-    Move(2, 40); // Move towards roller
-    Turn(-90, 40); // Turn back towards roller
-    Move(-0.5, 40); // Move back towards roller
-    AdjustRoller(360); // Roll roller
-    AdjustFlywheel(80); // Start up flywheel
-    Move(0.5, 40); // Move away from roller
-    AdjustConveyor(100); // Start up conveyor
-    Turn(-45, 40); // Rotate towards middle of arenaish
-    Move(3, 40); // Move and collect things without passing auto line (MOVE MUST ADD UP TO 5.65)
-    AdjustConveyor(0); // Stop conveyor
-    Move(2.65, 40); // Move and collect things without passing auto line
-    Turn(90, 40); // Turn towards opponent's goal
+    // Two square start
+    Move(0.75, 40);
+    Turn(90, 40);
+    Move(2.1, 40);
+    Turn(-85, 40);
 
-    FingerMotor.setPosition(0, turns); // Setup finger
-    FingerActivate(); // Launch discs
-    FingerActivate();
-    FingerActivate();
-    AdjustFlywheel(0); // Stop flywheel
-  }
-  if(mode == 3){ // Roller only
-  //if (starts at ez roller) [reposition to in front of roller]
-  //go backwards, trigger roller
-  //drive forward ~1.5 feet
-  //shoot two disks
-  //turn to nearby disks and pickup 3 
-  //**If time** turn and shoot all 3
-    Move(-0.1, 40); 
-    AdjustRoller(90);
-    AdjustFlywheel(69);
-    wait(4, seconds);
-    FingerActivate();
     wait(1, seconds);
+
     FingerActivate();
+    FingerActivate();
+
+    // Roll roller
+    Move(-0.45, 40);
+    AdjustRoller(90);
+
     AdjustFlywheel(0);
+    AdjustConveyor(0);
+
   }
-  if(mode == 4){ // Complex 5 disk thing starting from 2 square section
+  if(mode == 2){ // Two-Square Boosted Plan (FIVE DISKS SHOT)
     AdjustFlywheel(71);
 
     // Two square start
@@ -359,47 +336,104 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     AdjustConveyor(100);
     Move(-5.65, 50);
 
-/*
     // Turn towards goal and shoot again
     AdjustFlywheel(60);
     Turn(-90, 40);
     FingerActivate();
     FingerActivate();
     FingerActivate();
-*/
 
     AdjustFlywheel(0);
     AdjustConveyor(0);
 
   }
-  
-  if(mode == 5){ // Complex 5 disk thing starting from 2 square section
-    AdjustFlywheel(75);
-
-    // Two square start
-    Move(0.75, 40);
-    Turn(-90, 40);
-    Move(2.1, 40);
-    Turn(78, 40);
-
-    wait(1, seconds);
-
-    FingerActivate();
-    FingerActivate();
-
-    // Roll roller
-    Move(-0.5, 40);
+  if(mode == 3){ // Three-Square Start Plan (TWO DISKS SHOT)
+    Move(-0.1, 40); 
     AdjustRoller(90);
+    AdjustFlywheel(69);
+    wait(4, seconds);
+    FingerActivate();
+    wait(1, seconds);
+    FingerActivate();
+    AdjustFlywheel(0);
+  }
+  if(mode == 4){ // Skills Plan (TEN DISKS SHOT)
+    // Move backwards into roller slowly and spin roller
+    Move(-0.1, 40); 
+    AdjustRoller(180);
+    AdjustFlywheel(69);
 
-    // Move towards other discs and pick them up
-    Move(0.15, 40);
-    Turn(-90, 40);
-    Move(-0.25, 40);
-    Turn(-45, 40);
+    // Pick up disc that is on autonomous line
+    Move(1.5, 40);
+    Turn(135, 40);
     AdjustConveyor(100);
-    Move(-5.65, 50);
+    Move(-1.5, 40);
+    Turn(-45, 40);
+
+    // Move backwards into 2nd roller slowly and spin roller
+    AdjustConveyor(0);
+    Move(-1.5, 40);
+    AdjustRoller(180);
+
+    // Move forwards slightly and shoot three disks into the blue basket
+    Move(0.5, 40);
+    FingerActivate();
+    FingerActivate();
+    FingerActivate();
+
+    // Progress towards picking up next three discs
+    Turn(90, 40);
+    Move(-1, 40);
+    Turn(45, 40);
+    AdjustConveyor(100);
+    AdjustFlywheel(40);
+
+    // Pick up three disks
+    Move(-5.65, 40);
+
+    // Turn towards red basket and shoot three disks into there
+    Turn(90, 40);
+    AdjustConveyor(0);
+    FingerActivate();
+    FingerActivate();
+    FingerActivate();
+
+    // Move backwards into next set of three discs
+    AdjustConveyor(100);
+    Move(-2.82, 40);
+    Turn(-90, 40);
+    Move(-5.65, 40);
+    
+    // Move towards next roller
+    Turn(-45, 40);
+    Move(-0.75, 40);
+    Turn(90, 40);
+    
+    // Move backwards into 3rd roller slowly and spin roller
+    AdjustConveyor(0);
+    AdjustFlywheel(69);
+    Move(-1.5, 40);
+    AdjustRoller(180);
+
+    // Move forwards slightly and shoot three disks into the red basket
+    Move(1, 40);
+    FingerActivate();
+    FingerActivate();
+    FingerActivate();
+
+    // Move towards final disc and shoot it
+    AdjustConveyor(100);
+    Turn(-135, 40);
+    Move(-1.5, 40);
+    Turn(135, 40);
+    FingerActivate();
     AdjustFlywheel(0);
     AdjustConveyor(0);
+    Turn(-90, 40);
+
+    // Move backwards into final roller slowly and spin roller
+    Move(-1.5, 40);
+    AdjustRoller(180);
 
   }
 }
@@ -420,15 +454,19 @@ void autonomous(void) {
 }
 
 /** USER CONTROL / RC FUNCTIONS **/
-void toggleConveyor(){ // To toggle the conveyor
-  // Update the bool controlling whether or not the conveyor is on
-  conveyorOn = !conveyorOn;
+
+void updateConveyor(){ // To toggle the conveyor
   
   // Update conveyor status in-function to prevent wasted computations
   if(conveyorOn){
     // Set conveyor motor to full power (Because why wouldn't you)
     ConveyorMotor.setVelocity(100, percent);
-    ConveyorMotor.spin(reverse);
+    if(conveyorReversed){
+      ConveyorMotor.spin(forward);
+    }
+    else{
+      ConveyorMotor.spin(reverse);
+    }
   }
   else{
     // Stop conveyor motor
@@ -438,6 +476,14 @@ void toggleConveyor(){ // To toggle the conveyor
   // Update screen to refresh whether or not "Conveyor: " says "ON" or "OFF"
   refreshScreen(true, false, false);
 }
+
+void toggleConveyor(){ // To toggle the conveyor
+  // Update the bool controlling whether or not the conveyor is on
+  conveyorOn = !conveyorOn;
+  
+  updateConveyor();
+}
+
 
 void toggleFlywheel(int thespeed){ // To toggle the flywheel
   // Update the bool controlling whether or not the conveyor is on
@@ -551,6 +597,25 @@ void usercontrol(void) {
       conveyorButtonPressed = false;
     }
 
+    // Conveyor - Update whether conveyor is reversed or not
+    if(!conveyorReverseButtonPressed && Controller1.ButtonLeft.pressing()){
+      conveyorReversed = true;
+      updateConveyor();
+      conveyorReverseButtonPressed = true;
+    }
+    if(!conveyorUnReverseButtonPressed && Controller1.ButtonRight.pressing()){
+      conveyorReversed = false;
+      updateConveyor();
+      conveyorUnReverseButtonPressed = true;
+    }
+    
+    if(conveyorReverseButtonPressed && !Controller1.ButtonLeft.pressing()){
+      conveyorReverseButtonPressed = false;
+    }
+    if(conveyorUnReverseButtonPressed && !Controller1.ButtonRight.pressing()){
+      conveyorUnReverseButtonPressed = false;
+    }
+
     // Flywheel - Run the "toggleFlywheel" function every time the A button is pressed
     if(!flywheelButtonPressed && Controller1.ButtonX.pressing()){
       toggleFlywheel(flywheelAdjustedSpeed);
@@ -638,6 +703,7 @@ void usercontrol(void) {
         }
       }
     }
+    //
 
     // Wait
     wait(20, msec); // We are anti-wasters.
