@@ -18,12 +18,15 @@
 // FlywheelMotor        motor         12              
 // Controller1          controller                    
 // Pneumatic            digital_out   A               
+// InertialSensor       inertial      13              
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
 int autonomousMode = 5; // 1: THREE SQUARE, 2: TWO SQUARE
 bool twoStickMode = true;
 double maxSpeed = 0.9;
+
+#pragma region INFORMATION
 
 /** IMPORTANT INFORMATION
 
@@ -70,14 +73,15 @@ TOASTER SPEED: Speed that flywheel is turning at (when on)
 
 */
 
+#pragma endregion INFORMATION
+
+#pragma region VARIABLES
 #include "vex.h"
 
 using namespace vex;
 
-/** Global instance of competition */
 competition Competition;
 
-/** VARIABLES **/
 float minimumStick = 5;  // Minimum output from controller sticks
 bool refreshScreenEveryX = true; // If true, it will refresh every "nextScreenRef" x 20 milliseconds.
                                   // If false, it will refresh every battery % change (Checked every "nextScreenRef")
@@ -89,9 +93,12 @@ double turnSpd = 0;
 double leftSpd = 0;
 double rightSpd = 0;
 
-// Math Function
+// Math Functions
 int abs(int val){ // Convert integers to their absolute value
-  return val;
+  return val < 0 ? -val : val;
+}
+double absDouble(double val){ // Convert integers to their absolute value
+  return val < 0 ? -val : val;
 }
 
 bool conveyorOn = false; // Default to conveyor OFF, boolean that controls whether the conveyor is running
@@ -133,7 +140,9 @@ bool conveyorReverseButtonPressed = false;
 
 int flywheelAdjustedSpeed = 60;
 
-/** SCREEN FUNCTIONS **/
+#pragma endregion VARIABLES
+
+#pragma region SCREEN_FUNCTIONS
 void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
   
   // Clear screen
@@ -201,7 +210,9 @@ void setupScreen(){
   refreshScreen(true, true, true);
 }
 
-/** AUTONOMOUS FUNCTIONS **/
+#pragma endregion SCREEN_FUNCTIONS
+
+#pragma region AUTONOMOUS_FUNCTIONS
 void Move(double feet, int speed) { // Input in feet, speed in percent 0-100
   //input is feet, converts to inches, gets radians with arc length, converts to degrees
   float angle = ((feet * 12) / 2.125) * (180/3.14159);
@@ -212,13 +223,178 @@ void Move(double feet, int speed) { // Input in feet, speed in percent 0-100
   LeftDriveMotors.spinFor(forward, angle, deg, true);
 }
 
+void MovePID(double feet, int speed){ // Input in feet, speed in percent 0-100
+  //input is feet, converts to inches, gets radians with arc length, converts to degrees
+  float targetAngle = ((feet * 12) / 2.125) * (180/3.14159);
+  RightDriveMotors.setPosition(0, degrees);
+  LeftDriveMotors.setPosition(0, degrees);
+
+  float Kp = 0;
+  float Ki = 0;
+  float Kd = 0;
+
+  float error = 0;
+  float lastError = 0;
+  float integral = 0;
+  float derivative = 0;
+
+  float errors[480];
+  int counter = 0;
+
+  Brain.Screen.clearScreen();
+  Brain.Screen.setPenColor(red);
+  Brain.Screen.drawLine(0, 120, 479, 120);
+  Brain.Screen.setPenColor(white);
+
+  float targetSpeed = 0;
+
+  // For some reason I thought PID was always for distance, turns out it apparently was only used for correcting motors
+  while(LeftDriveMotors.position(degrees) < targetAngle){
+    targetSpeed = targetAngle - LeftDriveMotors.position(degrees);
+    if(targetSpeed > speed){
+      targetSpeed = speed;
+    }
+    if(targetSpeed < -speed){
+      targetSpeed = -speed;
+    }
+    if(targetSpeed < 5 && targetSpeed > -5){
+      if(targetSpeed < 0){
+        targetSpeed = -5;
+      }
+      else{
+        targetSpeed = 5;
+      }
+    }
+
+    error = LeftDriveMotors.position(degrees) - RightDriveMotors.position(degrees);
+
+    integral = integral + error;
+    derivative = error - lastError;
+
+    LeftDriveMotors.setVelocity(targetSpeed, percent);
+    RightDriveMotors.setVelocity(targetSpeed + (error * Kp) + (integral * Ki) + (derivative * Kd), percent);
+    
+    lastError = error + 0;
+
+    errors[counter] = error;
+    Brain.Screen.setPenColor(white);
+    Brain.Screen.drawPixel(counter, 120+(error*5));
+    Brain.Screen.setPenColor(blue);
+    Brain.Screen.drawPixel(counter, 120+(integral));
+    Brain.Screen.setPenColor(green);
+    Brain.Screen.drawPixel(counter, 120+(derivative*5));
+    counter ++;
+    if(counter >= 480){
+      counter = 479;
+    }
+
+    LeftDriveMotors.spin(forward);
+    RightDriveMotors.spin(forward);
+
+    counter ++;
+    wait(20, msec);
+  }
+
+  LeftDriveMotors.stop();
+  RightDriveMotors.stop();
+}
+
 void Turn(int angle, int speed) { // Positive angle spins clockwise?
   int angleAdjust = -angle * 3.6;
   RightDriveMotors.setVelocity(speed, percent);
   RightDriveMotors.spinFor(forward, angleAdjust, deg, false);
   LeftDriveMotors.setVelocity(speed, percent);
   LeftDriveMotors.spinFor(reverse, angleAdjust, deg, true);
+}
 
+void TurnA(int angle){ // Accepts any angle from 0 to 359.99, based on clockwise from starting position
+  double turnToAngle = angle;
+  if(turnToAngle >= 360){
+    turnToAngle -= 360;
+  }
+  else if(turnToAngle < 0){
+    turnToAngle += 360;
+  }
+  
+
+  double turnSpeed = 0;
+  double maxSpeed = 50;
+
+  double InertialPlus = 0;
+  double difference = turnToAngle - InertialSensor.heading(degrees);
+
+  
+  int counter = 0;
+  while(counter < 20){
+    difference = turnToAngle - (InertialSensor.heading(degrees) + InertialPlus);
+    if(absDouble(difference - 360) < absDouble(difference)){
+      InertialPlus += 360;
+      difference = turnToAngle - (InertialSensor.heading(degrees) + InertialPlus);
+    }
+    if(absDouble(difference + 360) < absDouble(difference)){
+      InertialPlus -= 360;
+      difference = turnToAngle - (InertialSensor.heading(degrees) + InertialPlus);
+    }
+
+    turnSpeed = absDouble(difference) < 2 ? (difference < 0 ? -2 : 2) : difference;
+    turnSpeed = turnSpeed > maxSpeed ? maxSpeed : (turnSpeed < -maxSpeed ? -maxSpeed : turnSpeed);
+    
+    RightDriveMotors.setVelocity(-turnSpeed, percent);
+    RightDriveMotors.spin(forward);
+    LeftDriveMotors.setVelocity(-turnSpeed, percent);
+    LeftDriveMotors.spin(reverse);
+
+    if(absDouble(difference) < 0.5){
+      counter ++;
+    }
+    else{
+      counter = 0;
+    }
+
+    wait(20, msec);
+  }
+
+  RightDriveMotors.stop();
+  LeftDriveMotors.stop();
+}
+
+void TurnI(int angle){
+  double turnToAngle = 180 + angle;
+  if(turnToAngle >= 360){
+    turnToAngle -= 360;
+  }
+  else if(turnToAngle < 0){
+    turnToAngle += 360;
+  }
+  InertialSensor.setHeading(180, degrees);
+
+  double turnSpeed = 0;
+  double maxSpeed = 40;
+  double difference = turnToAngle - InertialSensor.heading(degrees);
+
+  int counter = 0;
+  while(counter < 20){
+    difference = turnToAngle - InertialSensor.heading(degrees);
+    turnSpeed = absDouble(difference) < 2 ? (difference < 0 ? -2 : 2) : difference;
+    turnSpeed = turnSpeed > maxSpeed ? maxSpeed : (turnSpeed < -maxSpeed ? -maxSpeed : turnSpeed);
+    
+    RightDriveMotors.setVelocity(-turnSpeed, percent);
+    RightDriveMotors.spin(forward);
+    LeftDriveMotors.setVelocity(-turnSpeed, percent);
+    LeftDriveMotors.spin(reverse);
+
+    if(absDouble(difference) < 0.5){
+      counter ++;
+    }
+    else{
+      counter = 0;
+    }
+
+    wait(20, msec);
+  }
+
+  RightDriveMotors.stop();
+  LeftDriveMotors.stop();
 }
 
 void AdjustRoller(float angleAmount) { // Spins roller at 50 speed for X seconds
@@ -259,21 +435,24 @@ void FingerActivate(){ // FINGER ACTIVATE
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
   //FingerMotor.setPosition(0, turns);
 
-  while(FingerMotor.position(turns) < 1.5) {
-    FingerMotor.setVelocity(100, percent);
+  while(FingerMotor.position(turns) < 0.03) {
+    FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(forward);
     wait(20, msec);
   }
   FingerMotor.stop();
   while(FingerMotor.position(turns) >= 0){
-    FingerMotor.setVelocity(100, percent);
+    FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(reverse);
     wait(20, msec);
   }
   FingerMotor.stop();
-  wait(300, msec); // Give finger a moment
+  //wait(300, msec); // Give finger a moment
 }
 
+#pragma endregion AUTONOMOUS_FUNCTIONS
+
+#pragma region AUTONOMOUS
 /** PRE AUTONOMOUS **/
 void pre_auton(void) {
   // Initializing Robot Configuration. DO NOT REMOVE!
@@ -289,12 +468,12 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
   LeftDriveMotors.setTimeout(2, seconds);
   RightDriveMotors.setTimeout(2, seconds);
   if(mode == 1){ // Two-Square Start Plan (TWO DISKS SHOT)
-    AdjustFlywheel(71);
+    AdjustFlywheel(75);
 
     // Two square start
-    Move(0.75, 40);
+    Move(0.65, 40);
     Turn(90, 40);
-    Move(2.1, 40);
+    Move(1.9, 40);
     Turn(-85, 40);
 
     wait(1, seconds);
@@ -303,7 +482,7 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     FingerActivate();
 
     // Roll roller
-    Move(-0.45, 40);
+    Move(-0.35, 40);
     AdjustRoller(90);
 
     AdjustFlywheel(0);
@@ -311,12 +490,12 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
 
   }
   if(mode == 2){ // Two-Square Boosted Plan (FIVE DISKS SHOT)
-    AdjustFlywheel(71);
+    AdjustFlywheel(74);
 
     // Two square start
-    Move(0.75, 40);
+    Move(0.65, 40);
     Turn(90, 40);
-    Move(2.1, 40);
+    Move(1.9, 40);
     Turn(-85, 40);
 
     wait(1, seconds);
@@ -325,19 +504,20 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
     FingerActivate();
 
     // Roll roller
-    Move(-0.45, 40);
+    Move(-0.35, 40);
     AdjustRoller(90);
 
     // Move towards other discs and pick them up
-    Move(0.15, 40);
+    Move(0.35, 40);
     Turn(90, 40);
     Move(-0.25, 40);
     Turn(45, 40);
     AdjustConveyor(100);
-    Move(-5.65, 50);
+    Move(-7.5, 50);
 
     // Turn towards goal and shoot again
     AdjustFlywheel(60);
+    wait(2, seconds);
     Turn(-90, 40);
     FingerActivate();
     FingerActivate();
@@ -438,6 +618,7 @@ void StartAutonomous(int mode){ // All autonomous actions should happen here
   }
 }
 
+
 void autonomous(void) {
 
   Controller1.Screen.clearScreen();
@@ -453,7 +634,9 @@ void autonomous(void) {
   Controller1.Screen.print("FINISHED");
 }
 
-/** USER CONTROL / RC FUNCTIONS **/
+#pragma endregion AUTONOMOUS
+
+#pragma region RC_FUNCTIONS
 
 void updateConveyor(){ // To toggle the conveyor
   
@@ -508,20 +691,19 @@ void updateFinger(){
   FingerMotor.setStopping(hold);
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
   if(fingerMode == 1){ // FINGER OUT!
-    FingerMotor.setVelocity(99, percent);
+    FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(forward);
-    if(FingerMotor.position(turns) >= 1.4){
+    if(FingerMotor.position(turns) >= 0.02){
       FingerMotor.stop();
       fingerMode = 2;
     }
   }
   else if(fingerMode == 2){ // FINGER RETURN!
-    FingerMotor.setVelocity(99, percent);
+    FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(reverse);
-    if(FingerMotor.position(turns) <= 0){
+    if(FingerMotor.position(turns) < 0){
       FingerMotor.stop();
       fingerMode = 0;
-      refreshScreen(false, false, true);
     }
   }
 }
@@ -553,7 +735,9 @@ void updateFlywheelSpeed(int speedUpdate){
 
 }
 
-/** USER CONTROL / RC **/
+#pragma endregion RC_FUNCTIONS
+
+#pragma region RC
 
 void usercontrol(void) {
   // User control code here, inside the loop
@@ -657,23 +841,29 @@ void usercontrol(void) {
     }
 
     // Finger - Update "fingerMode" to 1 to start finger sequence
-    if(!fingerButtonPressed && Controller1.ButtonY.pressing()){
+    
+    if(Controller1.ButtonY.pressing()){
       if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
         fingerMode = 1;
         refreshScreen(false, false, true);
-        //FingerMotor.setPosition(0, degrees);
       }
       fingerButtonPressed = true;
     }
     if(fingerButtonPressed && !Controller1.ButtonY.pressing()){
       fingerButtonPressed = false;
+      refreshScreen(false, false, true);
     }
-
+    Brain.Screen.clearScreen();
+    Brain.Screen.setCursor(1, 1);
+    Brain.Screen.print(FlywheelMotor.velocity(percent));
     updateFinger();
 
     // Expansion
     if(Controller1.ButtonB.pressing()) {
       Pneumatic.set(true);
+    }
+    else{
+      Pneumatic.set(false);
     }
 
     // Screen Refresh every x msec (Not every check unless you want to REALLY lag the brain/controller)
@@ -710,9 +900,9 @@ void usercontrol(void) {
   }
 }
 
-//
-// Main will set up the competition functions and callbacks.
-//
+#pragma endregion RC
+
+#pragma region MAIN
 int main() {
   // Set up callbacks for autonomous and driver control periods.
   Competition.autonomous(autonomous);
@@ -726,3 +916,4 @@ int main() {
     wait(100, msec);
   }
 }
+#pragma endregion MAIN

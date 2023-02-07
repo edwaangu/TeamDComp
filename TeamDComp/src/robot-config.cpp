@@ -15,11 +15,12 @@ motor_group RightDriveMotors = motor_group(RightDriveMotorsMotorA, RightDriveMot
 motor LeftDriveMotorsMotorA = motor(PORT4, ratio18_1, false);
 motor LeftDriveMotorsMotorB = motor(PORT5, ratio18_1, false);
 motor_group LeftDriveMotors = motor_group(LeftDriveMotorsMotorA, LeftDriveMotorsMotorB);
-motor FingerMotor = motor(PORT20, ratio18_1, false);
+motor FingerMotor = motor(PORT20, ratio6_1, false);
 motor ConveyorMotor = motor(PORT1, ratio18_1, false);
 motor FlywheelMotor = motor(PORT12, ratio18_1, false);
 controller Controller1 = controller(primary);
 digital_out Pneumatic = digital_out(Brain.ThreeWirePort.A);
+inertial InertialSensor = inertial(PORT13);
 
 // VEXcode generated functions
 // define variable for remote controller enable/disable
