@@ -10,15 +10,16 @@
 // ---- START VEXCODE CONFIGURED DEVICES ----
 // Robot Configuration:
 // [Name]               [Type]        [Port(s)]
-// RollMotor            motor         6               
-// RightDriveMotors     motor_group   2, 3            
-// LeftDriveMotors      motor_group   4, 5            
-// FingerMotor          motor         20              
+// RollMotor            motor         2               
+// RightDriveMotors     motor_group   17, 20          
+// LeftDriveMotors      motor_group   18, 19          
+// FingerMotor          motor         15              
 // ConveyorMotor        motor         1               
-// FlywheelMotor        motor         12              
+// FlywheelMotor        motor         11              
 // Controller1          controller                    
 // Pneumatic            digital_out   A               
-// InertialSensor       inertial      13              
+// InertialSensor       inertial      9               
+// VisionSensor         vision        21              
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 bool testingAutonomous = false; // IMPORTANT: CHANGE TO FALSE WHEN RUNNING COMPETITION
@@ -843,7 +844,7 @@ void usercontrol(void) {
     // Finger - Update "fingerMode" to 1 to start finger sequence
     
     if(Controller1.ButtonY.pressing()){
-      if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
+      if(fingerMode == 0 && FlywheelMotor.velocity(percent) > flywheelAdjustedSpeed - 2 && FlywheelMotor.velocity(percent) < flywheelAdjustedSpeed + 2){ // Only start finger sequence when finger sequence is not running
         fingerMode = 1;
         refreshScreen(false, false, true);
       }
