@@ -15,11 +15,11 @@ motor_group RightDriveMotors = motor_group(RightDriveMotorsMotorA, RightDriveMot
 motor LeftDriveMotorsMotorA = motor(PORT18, ratio18_1, false);
 motor LeftDriveMotorsMotorB = motor(PORT19, ratio18_1, false);
 motor_group LeftDriveMotors = motor_group(LeftDriveMotorsMotorA, LeftDriveMotorsMotorB);
-motor FingerMotor = motor(PORT15, ratio6_1, false);
+motor FingerMotor = motor(PORT5, ratio6_1, false);
 motor ConveyorMotor = motor(PORT1, ratio36_1, false);
 motor FlywheelMotor = motor(PORT11, ratio18_1, false);
 controller Controller1 = controller(primary);
-digital_out Pneumatic = digital_out(Brain.ThreeWirePort.A);
+digital_out Pneumatic = digital_out(Brain.ThreeWirePort.H);
 inertial InertialSensor = inertial(PORT9);
 /*vex-vision-config:begin*/
 signature VisionSensor__RED_GOAL = signature (1, 1707, 10321, 6014, -1591, 85, -753, 0.7, 0);

@@ -13,11 +13,11 @@
 // RollMotor            motor         2               
 // RightDriveMotors     motor_group   17, 20          
 // LeftDriveMotors      motor_group   18, 19          
-// FingerMotor          motor         15              
+// FingerMotor          motor         5               
 // ConveyorMotor        motor         1               
 // FlywheelMotor        motor         11              
 // Controller1          controller                    
-// Pneumatic            digital_out   A               
+// Pneumatic            digital_out   H               
 // InertialSensor       inertial      9               
 // VisionSensor         vision        21              
 // ---- END VEXCODE CONFIGURED DEVICES ----
@@ -691,6 +691,7 @@ void toggleFlywheel(int thespeed){ // To toggle the flywheel
 void updateFinger(){
   FingerMotor.setStopping(hold);
   FingerMotor.setTimeout(1, seconds); // Do not hurt kid named finger :(
+    
   if(fingerMode == 1){ // FINGER OUT!
     FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(forward);
@@ -702,11 +703,23 @@ void updateFinger(){
   else if(fingerMode == 2){ // FINGER RETURN!
     FingerMotor.setVelocity(50, percent);
     FingerMotor.spin(reverse);
-    if(FingerMotor.position(turns) < 0){
+    if(FingerMotor.position(turns) <= 0.02){
       FingerMotor.stop();
       fingerMode = 0;
     }
   }
+  /*
+  if(fingerMode == 1){
+
+    FingerMotor.setVelocity(40, percent);
+    FingerMotor.spinFor(forward, 60, degrees);
+    FingerMotor.spinFor(reverse, 60, degrees);
+    FingerMotor.spinToPosition(60, degrees);
+    FingerMotor.spinToPosition(20, degrees);
+
+    FingerMotor.stop();
+    fingerMode = 0;
+  }*/
 }
 
 void updateFlywheelSpeed(int speedUpdate){
@@ -749,7 +762,7 @@ void usercontrol(void) {
     if(abs(Controller1.Axis3.position(percent)) + abs(turnAxis) >= minimumStick){
       // Only move if controller sticks are more than the deadband (In case of controller drift)
       // Use dual stick mode, easier to go straight or control turns if necessary
-      fwdBackSpd = Controller1.Axis3.position(percent);
+      fwdBackSpd = -Controller1.Axis3.position(percent);
       turnSpd = -turnAxis * 0.85;
 
       leftSpd = fwdBackSpd - turnSpd;
@@ -843,8 +856,8 @@ void usercontrol(void) {
 
     // Finger - Update "fingerMode" to 1 to start finger sequence
     
-    if(Controller1.ButtonY.pressing()){
-      if(fingerMode == 0 && FlywheelMotor.velocity(percent) > flywheelAdjustedSpeed - 2 && FlywheelMotor.velocity(percent) < flywheelAdjustedSpeed + 2){ // Only start finger sequence when finger sequence is not running
+    if(Controller1.ButtonY.pressing() && FlywheelMotor.velocity(percent) > flywheelAdjustedSpeed - 2 && FlywheelMotor.velocity(percent) < flywheelAdjustedSpeed + 2){ //  
+      if(fingerMode == 0){ // Only start finger sequence when finger sequence is not running
         fingerMode = 1;
         refreshScreen(false, false, true);
       }
