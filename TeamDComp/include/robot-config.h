@@ -10,7 +10,6 @@ extern motor_group RightDriveMotors;
 extern motor_group LeftDriveMotors;
 extern motor FingerMotor;
 extern motor ConveyorMotor;
-extern motor FlywheelMotor;
 extern controller Controller1;
 extern digital_out Pneumatic;
 extern inertial InertialSensor;
@@ -22,6 +21,8 @@ extern signature VisionSensor__SIG_5;
 extern signature VisionSensor__SIG_6;
 extern signature VisionSensor__SIG_7;
 extern vision VisionSensor;
+extern digital_out Pneumatic2;
+extern motor_group FlywheelMotor;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.
