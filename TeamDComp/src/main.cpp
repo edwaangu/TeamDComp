@@ -435,12 +435,11 @@ void refreshScreen(bool updateRow1, bool updateRow2, bool updateRow3){
     Controller1.Screen.setCursor(3, 1);
 
     // Print whether finger is busy
-    Controller1.Screen.print("FINGER:");
-    Controller1.Screen.print(fingerMode == 0 ? "LAZY " : "BUSY ");
+    Controller1.Screen.print("FING:");
+    Controller1.Screen.print(fingerMode == 0 ? "OFF | JUICE: " : "ON  | JUICE: ");
 
     
-    Controller1.Screen.print("%d", lastBatteryAmt);
-    Controller1.Screen.print("%");
+    Controller1.Screen.print(lastBatteryAmt);
   }
 }
 
@@ -1156,16 +1155,9 @@ void usercontrol(void) {
         if(screenInformationMode > 2){
           screenInformationMode = 0;
         }
-        if(refreshScreenEveryX){ // If the mode is to refresh every x amount of times
-          refreshScreen(false, true, false); // Run refresh screen function
-          lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
-        }
-        else{ // If the mode is to refresh if the battery percentage changes
-          if(lastBatteryAmt != Brain.Battery.capacity()){ // Check if battery % changed from last refresh
-            refreshScreen(false, true, false); // Refresh screen
-            lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
-          }
-        }
+        lastBatteryAmt = Brain.Battery.capacity(); // Update "lastBatteryAmt" to remember what the battery % was last
+        refreshScreen(false, true, true); // Run refresh screen function
+        
       }
     }
     //
